@@ -1,0 +1,13 @@
+{
+  "id": "workspace-relations",
+  "name": "Workspace relations",
+  "description": "Nests sub-agent workspaces under the workspace that spawned them, with pull request drafts, approvals and conflicts.",
+  "media": [
+    "assets/sidebar.png",
+    "assets/drag-reorder.gif",
+    "assets/context-menu.png"
+  ],
+  "requirements": {
+    "paseo": ">=0.16.1"
+  }
+}
