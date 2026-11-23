@@ -1,11 +1,10 @@
 import { useCallback, useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import type { PaseoWorkspace } from "@getpaseo/client";
 import type { PluginWorkspaceSnapshot } from "@getpaseo/plugin";
 import { usePaseo, useWorkspace, type WorkspaceRef } from "@getpaseo/plugin/client";
 import { copyText, Modal, TextInput, useToast } from "@getpaseo/plugin/client/ui";
 import { useSidebar } from "./context";
-import { useWorkspaceDescriptor } from "./data";
+import { useWorkspaceDescriptor, type PaseoWorkspace } from "./data";
 import { useLayer } from "./layer";
 import type { Palette } from "./look";
 import { MenuBack, MenuItem } from "./menu";

@@ -1,6 +1,5 @@
 import { Fragment, useState, type ReactNode } from "react";
 import { Pressable, Text, View, type GestureResponderEvent } from "react-native";
-import type { PaseoWorkspace } from "@getpaseo/client";
 import type { PluginWorkspaceSnapshot } from "@getpaseo/plugin";
 import { openExternalUrl } from "@getpaseo/plugin/client";
 import { Icon } from "@getpaseo/plugin/client/ui";
@@ -13,6 +12,7 @@ import {
   pullRequestOf,
   pullRequestStateOf,
   type PullRequestState,
+  type PaseoWorkspace,
 } from "./data";
 import type { Palette } from "./look";
 import { usePrStatus } from "./use-pr-status";

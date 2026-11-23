@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
-import type { PaseoWorkspace } from "@getpaseo/client";
 import {
   getPaseoClient,
   useAgents,
   useHosts,
   usePaseo,
   useWorkspaces,
+  type PluginPaseoApi,
   type WorkspaceRef,
 } from "@getpaseo/plugin/client";
+
+/**
+ * The daemon's full workspace descriptor, reached through the SDK. Importing it from
+ * @getpaseo/client would need that package installed, which a Git install doesn't do.
+ */
+export type PaseoWorkspace = NonNullable<ReturnType<ReturnType<PluginPaseoApi["workspaces"]["ref"]>["current"]>>;
 
 /**
  * The daemon's full workspace descriptor: PR runtime (number, state, checks, mergeable), services,
