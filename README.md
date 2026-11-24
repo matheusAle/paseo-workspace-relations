@@ -36,17 +36,27 @@ paseo plugin add github:matheusAle/paseo-workspace-relations
 Then choose **Settings → Sidebar → Sidebar view → Relations**.
 
 Approval counts come from the `gh` (GitHub) or `glab` (GitLab) CLI, run in the workspace's
-directory on the daemon host about once a minute while a pull request is open. Install and sign in
-to the one your repositories use. The required approval count comes from branch protection, which
-usually only repository admins can read; otherwise the row shows the approval count alone.
+directory on the daemon host. Install and sign in to the one your repositories use. The host asks
+once per workspace on screen, shared by every row and card showing it:
+
+- every minute by default; change it under **Display preferences → Pull request refresh**
+  (30 seconds to 15 minutes, or only when asked)
+- right away when Paseo sees the pull request change (state, draft, mergeability, review decision,
+  checks)
+- when you choose **Refresh pull requests** from a project's ⋮ menu
+
+The required approval count comes from branch protection, which usually only repository admins can
+read; otherwise the row shows the approval count alone. It's cached for an hour per repository and
+base branch; Refresh pull requests reads it again.
 
 Requires Paseo 0.16.1 or later.
 
 ## Limitations
 
 - Project icons show as letter avatars.
-- The workspace menu has no Mark as read/unread or Open in file manager, and the project menu only
-  has Open project settings (web) and Copy path. Plugins can't reach those app actions.
+- The workspace menu has no Mark as read/unread or Open in file manager, and the project menu has
+  only Open project settings (web), Copy path and Refresh pull requests. Plugins can't reach the
+  other app actions.
 - The order you set here is kept on the device and separate from the default sidebar's. On web it
   starts from the default sidebar's order the first time the view loads.
 - Other plugins' workspace row badges only render in the default sidebar view.

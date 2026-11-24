@@ -1,7 +1,7 @@
 {
   "name": "workspace-relations",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Nests sub-agent workspaces under the workspace that spawned them, with pull request drafts, approvals and conflicts.",
   "license": "MIT",
   "repository": {

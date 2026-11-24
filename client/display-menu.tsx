@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { useHosts, useProject, useProjects, type ProjectRef } from "@getpaseo/plugin/client";
+import { PR_REFRESH_CHOICES } from "../shared/pr-status";
 import type { SidebarSettings } from "../shared/settings";
 import { useSidebar } from "./context";
 import { MenuBack, MenuItem, MenuSeparator } from "./menu";
 
-type Page = "root" | "grouping" | "sort" | "title" | "show" | "checks" | "hosts" | "projects" | "labels";
+type Page = "root" | "grouping" | "sort" | "title" | "show" | "checks" | "refresh" | "hosts" | "projects" | "labels";
 
 const GROUPING_LABEL: Record<SidebarSettings["grouping"], string> = { project: "Project", status: "Status" };
 const SORT_LABEL: Record<SidebarSettings["sort"], string> = { manual: "Manual", created: "Created", lastPrompt: "Last prompt" };
@@ -16,6 +17,15 @@ const CHECKS_LABEL: Record<SidebarSettings["checks"], string> = {
   icon: "Icon only",
   hidden: "Hidden",
 };
+
+/** "Every 2 minutes" in the list, "2 min" beside the menu item. */
+function refreshLabel(seconds: number, short: boolean): string {
+  if (seconds === 0) return short ? "Manual" : "Only when asked";
+  if (seconds < 60) return short ? `${seconds} s` : `Every ${seconds} seconds`;
+  const minutes = seconds / 60;
+  if (short) return `${minutes} min`;
+  return minutes === 1 ? "Every minute" : `Every ${minutes} minutes`;
+}
 
 const SHOW_ITEMS: readonly { key: keyof SidebarSettings["show"]; label: string; icon: string }[] = [
   { key: "branch", label: "Branch", icon: "GitBranch" },
@@ -44,9 +54,16 @@ export function DisplayMenu() {
   const [page, setPage] = useState<Page>("root");
   const back = () => setPage("root");
 
-  if (page === "grouping" || page === "sort" || page === "title" || page === "checks") {
+  if (page === "grouping" || page === "sort" || page === "title" || page === "checks" || page === "refresh") {
     const options =
-      page === "grouping"
+      page === "refresh"
+        ? PR_REFRESH_CHOICES.map((value) => ({
+            label: refreshLabel(value, false),
+            icon: value === 0 ? "Hand" : "RefreshCw",
+            checked: settings.prRefreshSeconds === value,
+            select: () => saveSettings({ prRefreshSeconds: value }),
+          }))
+        : page === "grouping"
         ? (["project", "status"] as const).map((value) => ({
             label: GROUPING_LABEL[value],
             icon: value === "project" ? "Folder" : "CircleDashed",
@@ -73,7 +90,13 @@ export function DisplayMenu() {
                 checked: settings.checks === value,
                 select: () => saveSettings({ checks: value }),
               }));
-    const title = { grouping: "Grouping", sort: "Sort", title: "Title", checks: "Checks" }[page];
+    const title = {
+      grouping: "Grouping",
+      sort: "Sort",
+      title: "Title",
+      checks: "Checks",
+      refresh: "Pull request refresh",
+    }[page];
     return (
       <View>
         <MenuBack title={title} onPress={page === "checks" ? () => setPage("show") : back} palette={palette} />
@@ -195,6 +218,13 @@ export function DisplayMenu() {
       ) : null}
       <MenuItem label="Title" value={TITLE_LABEL[settings.title]} submenu onPress={() => setPage("title")} palette={palette} />
       <MenuItem label="Show" submenu onPress={() => setPage("show")} palette={palette} />
+      <MenuItem
+        label="Pull request refresh"
+        value={refreshLabel(settings.prRefreshSeconds, true)}
+        submenu
+        onPress={() => setPage("refresh")}
+        palette={palette}
+      />
       {multiHost || projects.length > 1 ? <MenuSeparator palette={palette} /> : null}
       {multiHost ? (
         <MenuItem

@@ -23,7 +23,7 @@ workspaces reorder among their siblings, and dragging a parent moves its sub-age
 
 Where it differs from the default sidebar: project icons show as letter avatars, the workspace menu
 has no Mark as read/unread or Open in file manager, and the project menu only has Open project
-settings (web) and Copy path. Reordering here doesn't change the default sidebar's order.
+settings (web), Copy path and Refresh pull requests. Reordering here doesn't change the default sidebar's order.
 
 ## Pull request details
 
@@ -31,8 +31,11 @@ Rows show a draft pull request as a draft, how many approvals it has (for exampl
 repository requires reviews), and merge conflicts. The hover card also says whether it can merge.
 The default sidebar gets the same draft, approval and conflict details as a row item.
 
-Approvals come from the `gh` or `glab` CLI, run in the workspace's directory on the host about once a
-minute while the pull request is open, so the CLI must be installed and signed in there. The required
-approval count comes from GitHub branch protection, which only repository admins can usually read;
-otherwise the number of approvals is shown on its own. Gitea and Forgejo repositories show no
-approval count.
+Approvals come from the `gh` or `glab` CLI, run in the workspace's directory on the host, so the CLI
+must be installed and signed in there. The host asks once per workspace on screen, however many rows
+and cards show it: every minute by default (change it under Display preferences > Pull request
+refresh, or set it to only when asked), right away when Paseo sees the pull request change, and
+when you choose Refresh pull requests from a project's menu. The required approval count comes from
+GitHub branch protection, which only repository admins can usually read; otherwise the number of
+approvals is shown on its own. It is kept for an hour per repository and base branch, and Refresh
+pull requests reads it again. Gitea and Forgejo repositories show no approval count.

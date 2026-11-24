@@ -1,8 +1,9 @@
 import { useRef, useState, type ReactNode } from "react";
 import { Platform, Pressable, Text, View, type GestureResponderEvent } from "react-native";
 import type { WorkspaceIndicator } from "@getpaseo/plugin";
-import { useProject, type ProjectRef } from "@getpaseo/plugin/client";
+import { useProject, useRpc, useWorkspaces, type ProjectRef } from "@getpaseo/plugin/client";
 import { copyText, Icon } from "@getpaseo/plugin/client/ui";
+import { prStatusRefresh } from "../shared/pr-status";
 import { useSidebar } from "./context";
 import { ProjectAvatar } from "./glyphs";
 import { contextMenuProps, useLayer } from "./layer";
@@ -77,6 +78,8 @@ function openAppRoute(path: string): void {
 
 function ProjectMenu({ projectRef, rootPath, close }: { projectRef: ProjectRef; rootPath: string; close: () => void }) {
   const { palette } = useSidebar();
+  const refresh = useRpc(prStatusRefresh);
+  const workspaces = useWorkspaces({ where: (workspace) => workspace.project.key === projectRef.key });
   return (
     <View>
       {Platform.OS === "web" ? (
@@ -99,6 +102,16 @@ function ProjectMenu({ projectRef, rootPath, close }: { projectRef: ProjectRef; 
         onPress={() => {
           close();
           void copyText(rootPath);
+        }}
+      />
+      <MenuItem
+        label="Refresh pull requests"
+        icon="RefreshCw"
+        palette={palette}
+        onPress={() => {
+          close();
+          // Asks the forge again for every row of this project now on screen.
+          void refresh({ workspaceIds: workspaces.map((ref) => ref.id), force: true }).catch(() => {});
         }}
       />
     </View>

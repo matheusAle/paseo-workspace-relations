@@ -1,69 +1,49 @@
 import { execCommand } from "@getpaseo/plugin/server";
-import type { PluginSubscriptionContext } from "@getpaseo/plugin/server";
+import type { PluginHandlerContext } from "@getpaseo/plugin/server";
 import type { PrStatusEvent } from "../shared/pr-status";
 
-const POLL_INTERVAL_MS = 60_000;
 const NOT_FOUND: PrStatusEvent = { found: false };
+/** Branch protection rarely changes; ask for the required approval count at most hourly. */
+const REQUIRED_APPROVALS_TTL_MS = 60 * 60 * 1000;
 
-export function watchPrStatus(
-  input: { workspaceId: string },
-  context: PluginSubscriptionContext<PrStatusEvent>,
-): void {
-  // Stay synchronous: a handler that returns a promise closes the subscription when it settles.
-  let stopped = false;
-  let timer: ReturnType<typeof setInterval> | null = null;
-  context.signal.addEventListener(
-    "abort",
-    () => {
-      stopped = true;
-      if (timer) clearInterval(timer);
-    },
-    { once: true },
-  );
+const requiredApprovalsCache = new Map<string, { value: number | null; at: number }>();
 
-  void (async () => {
-    // A fresh handle knows nothing until refreshed; its directory reads null before that.
-    const workspace = await context.paseo.workspaces
-      .ref(input.workspaceId)
-      .refresh()
-      .catch(() => null);
-    const directory = workspace?.workspaceDirectory ?? null;
-    if (stopped) return;
-    if (!directory) {
-      await context.push(NOT_FOUND);
-      return;
-    }
-    const poll = async () => {
-      if (stopped) return;
-      const event = await resolvePrStatus(directory);
-      if (!stopped) await context.push(event);
-    };
-    await poll();
-    if (!stopped) timer = setInterval(() => void poll(), POLL_INTERVAL_MS);
-  })();
+/**
+ * One workspace's pull request review status, from the forge CLI run in its directory. `force`
+ * (a person asked) also skips the cached required approval count.
+ */
+export async function resolveWorkspacePrStatus(
+  workspaceId: string,
+  paseo: PluginHandlerContext["paseo"],
+  force: boolean,
+): Promise<PrStatusEvent> {
+  // A fresh handle knows nothing until refreshed; its directory reads null before that.
+  const workspace = await paseo.workspaces
+    .ref(workspaceId)
+    .refresh()
+    .catch(() => null);
+  const directory = workspace?.workspaceDirectory ?? null;
+  return directory ? resolvePrStatus(directory, force) : NOT_FOUND;
 }
 
-async function resolvePrStatus(cwd: string): Promise<PrStatusEvent> {
-  const forge = await detectForge(cwd);
+async function resolvePrStatus(cwd: string, force: boolean): Promise<PrStatusEvent> {
+  const origin = await readOrigin(cwd);
   try {
-    if (forge === "github") return await fetchGithubStatus(cwd);
-    if (forge === "gitlab") return await fetchGitlabStatus(cwd);
+    if (origin && /github\.com/i.test(origin)) return await fetchGithubStatus(cwd, origin, force);
+    if (origin && /gitlab\.com/i.test(origin)) return await fetchGitlabStatus(cwd);
   } catch {
     // No PR for this branch, or the CLI isn't authenticated — show nothing rather than an error.
   }
   return NOT_FOUND;
 }
 
-async function detectForge(cwd: string): Promise<"github" | "gitlab" | null> {
+async function readOrigin(cwd: string): Promise<string | null> {
   try {
     const { stdout } = await execCommand("git", ["remote", "get-url", "origin"], {
       cwd,
       timeout: 5_000,
     });
-    const url = stdout.trim();
-    if (/github\.com/i.test(url)) return "github";
-    if (/gitlab\.com/i.test(url)) return "gitlab";
-    return null;
+    return stdout.trim() || null;
   } catch {
     return null;
   }
@@ -104,7 +84,21 @@ function countGithubApprovals(reviews: GithubReview[]): number {
   return approved;
 }
 
-async function fetchGithubRequiredApprovals(cwd: string, baseRefName: string): Promise<number | null> {
+async function fetchGithubRequiredApprovals(
+  cwd: string,
+  origin: string,
+  baseRefName: string,
+  force: boolean,
+): Promise<number | null> {
+  const key = `${origin}#${baseRefName}`;
+  const cached = requiredApprovalsCache.get(key);
+  if (!force && cached && Date.now() - cached.at < REQUIRED_APPROVALS_TTL_MS) return cached.value;
+  const value = await readGithubRequiredApprovals(cwd, baseRefName);
+  requiredApprovalsCache.set(key, { value, at: Date.now() });
+  return value;
+}
+
+async function readGithubRequiredApprovals(cwd: string, baseRefName: string): Promise<number | null> {
   try {
     const { stdout } = await execCommand(
       "gh",
@@ -120,7 +114,7 @@ async function fetchGithubRequiredApprovals(cwd: string, baseRefName: string): P
   }
 }
 
-async function fetchGithubStatus(cwd: string): Promise<PrStatusEvent> {
+async function fetchGithubStatus(cwd: string, origin: string, force: boolean): Promise<PrStatusEvent> {
   const { stdout } = await execCommand(
     "gh",
     ["pr", "view", "--json", "number,url,state,isDraft,mergeable,reviews,baseRefName"],
@@ -141,7 +135,11 @@ async function fetchGithubStatus(cwd: string): Promise<PrStatusEvent> {
     state: resolvedState,
     mergeable,
     approvalsGiven: countGithubApprovals(view.reviews ?? []),
-    approvalsRequired: await fetchGithubRequiredApprovals(cwd, view.baseRefName),
+    // Merged and closed pull requests don't show approvals; skip the extra call.
+    approvalsRequired:
+      resolvedState === "open" || resolvedState === "draft"
+        ? await fetchGithubRequiredApprovals(cwd, origin, view.baseRefName, force)
+        : null,
   };
 }
 

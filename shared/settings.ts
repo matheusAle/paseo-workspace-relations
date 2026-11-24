@@ -26,6 +26,8 @@ export const SidebarSettingsSchema = z.object({
   projectOrder: z.array(z.string()).default([]),
   pinnedOrder: z.array(z.string()).default([]),
   workspaceOrder: z.record(z.string(), z.array(z.string())).default({}),
+  /** How often to ask the forge for review status, in seconds; 0 only on request. */
+  prRefreshSeconds: z.number().int().min(0).default(60),
   /** Set once the app sidebar's own order (web) has been copied in. */
   importedAppOrder: z.boolean().default(false),
 });

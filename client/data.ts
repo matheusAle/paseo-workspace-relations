@@ -209,6 +209,24 @@ export function pullRequestOf(descriptor: PaseoWorkspace | null): PullRequest | 
   return descriptor?.githubRuntime?.pullRequest ?? null;
 }
 
+/**
+ * What Paseo knows about a workspace's pull request, as one string: it changes when the pull
+ * request does (state, draft, mergeability, review decision, checks), so a change asks the forge
+ * for approvals again. Null without a pull request.
+ */
+export function pullRequestChangeKey(pullRequest: PullRequest | null): string | null {
+  if (!pullRequest) return null;
+  return [
+    pullRequest.number,
+    pullRequest.state,
+    pullRequest.isDraft,
+    pullRequest.isMerged,
+    pullRequest.mergeable,
+    pullRequest.reviewDecision,
+    pullRequest.checksStatus,
+  ].join("|");
+}
+
 export function checksStateOf(pullRequest: PullRequest | null): ChecksState {
   if (!pullRequest) return "none";
   const checks = pullRequest.checks ?? [];

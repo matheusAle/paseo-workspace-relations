@@ -9,6 +9,7 @@ import {
   checksStateOf,
   primaryServiceOf,
   pullRequestNumberOf,
+  pullRequestChangeKey,
   pullRequestOf,
   pullRequestStateOf,
   type PullRequestState,
@@ -127,15 +128,17 @@ function MetaRowWithReview({
   head,
   tail,
   mergeable,
+  changeKey,
   palette,
 }: {
   workspaceId: string;
   head: MetaPart[];
   tail: MetaPart[];
   mergeable: string | undefined;
+  changeKey: string | null;
   palette: Palette;
 }) {
-  const status = usePrStatus(workspaceId);
+  const status = usePrStatus(workspaceId, changeKey);
   return <MetaRow parts={[...head, ...reviewParts(status, mergeable, palette), ...tail]} palette={palette} />;
 }
 
@@ -225,6 +228,7 @@ export function WorkspaceMeta({
         head={head}
         tail={tail}
         mergeable={pullRequest?.mergeable}
+        changeKey={pullRequestChangeKey(pullRequest)}
         palette={palette}
       />
     );

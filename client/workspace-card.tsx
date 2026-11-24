@@ -6,6 +6,7 @@ import { useSidebar } from "./context";
 import {
   checkCountsOf,
   pullRequestNumberOf,
+  pullRequestChangeKey,
   pullRequestOf,
   pullRequestStateOf,
   useWorkspaceDescriptor,
@@ -54,8 +55,18 @@ function CopyRow({ icon, value, copyValue, label, palette }: { icon: string; val
   );
 }
 
-function ReviewRows({ workspaceId, mergeable, palette }: { workspaceId: string; mergeable: string | undefined; palette: Palette }) {
-  const status = usePrStatus(workspaceId);
+function ReviewRows({
+  workspaceId,
+  mergeable,
+  changeKey,
+  palette,
+}: {
+  workspaceId: string;
+  mergeable: string | undefined;
+  changeKey: string | null;
+  palette: Palette;
+}) {
+  const status = usePrStatus(workspaceId, changeKey);
   const found = status?.found ? status : null;
   const conflicting = mergeable === "CONFLICTING" || found?.mergeable === "conflicting";
   const clean = mergeable === "MERGEABLE" || found?.mergeable === "mergeable";
@@ -168,7 +179,12 @@ export function WorkspaceCard({ workspaceRef }: { workspaceRef: WorkspaceRef }) 
         </CardRow>
       ) : null}
       {pullRequest && (prState === "open" || prState === "draft") ? (
-        <ReviewRows workspaceId={workspace.id} mergeable={pullRequest.mergeable} palette={palette} />
+        <ReviewRows
+          workspaceId={workspace.id}
+          mergeable={pullRequest.mergeable}
+          changeKey={pullRequestChangeKey(pullRequest)}
+          palette={palette}
+        />
       ) : null}
       {workspace.diffStat ? (
         <CardRow icon="FileDiff" palette={palette}>

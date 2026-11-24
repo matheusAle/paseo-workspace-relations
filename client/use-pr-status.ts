@@ -1,11 +1,33 @@
-import { useState } from "react";
-import { useSubscription } from "@getpaseo/plugin/client";
+import { useEffect, useRef, useState } from "react";
+import { useRpc, useSettings, useSubscription } from "@getpaseo/plugin/client";
 import type { WorkspaceRowBadgeTone } from "@getpaseo/plugin/client/ui";
-import { prStatusWatch, type PrStatusEvent } from "../shared/pr-status";
+import { prStatusRefresh, prStatusWatch, type PrStatusEvent } from "../shared/pr-status";
+import { DEFAULT_SIDEBAR_SETTINGS, sidebarSettings } from "../shared/settings";
 
-export function usePrStatus(workspaceId: string): PrStatusEvent | null {
+/**
+ * A workspace's review status from the forge. The daemon fetches it once per workspace however
+ * many rows watch it, at the refresh interval set in the display menu. `changeKey` summarizes
+ * Paseo's own pull request state for the workspace; when it changes (a push, a review, a merge),
+ * the forge is asked again instead of waiting for the next interval.
+ */
+export function usePrStatus(workspaceId: string, changeKey?: string | null): PrStatusEvent | null {
   const [status, setStatus] = useState<PrStatusEvent | null>(null);
-  useSubscription(prStatusWatch, { workspaceId }, setStatus);
+  const settings = useSettings(sidebarSettings);
+  const intervalSeconds =
+    settings.status === "ready" ? settings.values.prRefreshSeconds : DEFAULT_SIDEBAR_SETTINGS.prRefreshSeconds;
+  useSubscription(prStatusWatch, { workspaceId, intervalSeconds }, setStatus);
+
+  const refresh = useRpc(prStatusRefresh);
+  const seen = useRef(changeKey);
+  useEffect(() => {
+    if (changeKey === undefined || changeKey === seen.current) return;
+    const first = seen.current === undefined || seen.current === null;
+    seen.current = changeKey;
+    // The first value is what the subscription already fetched against.
+    if (first) return;
+    void refresh({ workspaceIds: [workspaceId], force: false }).catch(() => {});
+  }, [changeKey, workspaceId, refresh]);
+
   return status;
 }
 
